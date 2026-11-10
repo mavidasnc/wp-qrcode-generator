@@ -1,0 +1,15 @@
+# Dipendenze (si installano con composer; vanno nello zip di release)
+/vendor/
+
+# Pacchetti di release
+/zip/
+*.zip
+
+# Ambiente e strumenti
+.env
+.phpcs-cache
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log

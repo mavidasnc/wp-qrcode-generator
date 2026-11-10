@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<ruleset name="wp-qrcode-generator">
+    <description>Coding standards per wp-qrcode-generator (stesso impianto di wp-5w)</description>
+
+    <file>./includes</file>
+    <file>./templates</file>
+    <file>./wp-qrcode-generator.php</file>
+    <file>./index.php</file>
+
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+
+    <arg value="sp"/>
+    <arg name="basepath" value="."/>
+    <arg name="extensions" value="php"/>
+    <arg name="parallel" value="8"/>
+
+    <!-- Standard WordPress -->
+    <rule ref="WordPress">
+        <!-- Nomi file PascalCase per le classi PSR-4 -->
+        <exclude name="WordPress.Files.FileName"/>
+    </rule>
+
+    <!-- Compatibilità PHP -->
+    <rule ref="PHPCompatibilityWP"/>
+    <config name="testVersion" value="8.2-"/>
+
+    <!-- Compatibilità WordPress -->
+    <config name="minimum_wp_version" value="6.4"/>
+
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="wp-qrcode-generator"/>
+            </property>
+        </properties>
+    </rule>
+
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="wpqr"/>
+                <element value="WPQR"/>
+                <element value="Mavida\QRCodeGenerator"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>
