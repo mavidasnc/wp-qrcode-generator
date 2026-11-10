@@ -1,21 +1,23 @@
 <?php
 /**
  * Plugin Name:       WP QRCode Generator
+ * Plugin URI:        https://github.com/mavidasnc/wp-qrcode-generator
  * Description:       Genera codici QR che fanno redirect o mostrano contenuti e allegati, con statistiche di scansione giorno per giorno.
- * Version:           0.2.1
+ * Version:           0.3.0
  * Requires at least: 6.4
  * Requires PHP:      8.2
  * Author:            Mavida
  * Author URI:        https://www.mavida.com
  * License:           GPL-2.0-or-later
  * Text Domain:       wp-qrcode-generator
+ * Update URI:        https://github.com/mavidasnc/wp-qrcode-generator
  *
  * @package Mavida\QRCodeGenerator
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WPQR_VERSION', '0.2.1' );
+define( 'WPQR_VERSION', '0.3.0' );
 define( 'WPQR_FILE', __FILE__ );
 define( 'WPQR_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WPQR_URL', plugin_dir_url( __FILE__ ) );

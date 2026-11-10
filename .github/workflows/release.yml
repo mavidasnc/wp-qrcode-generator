@@ -1,0 +1,59 @@
+name: Release
+
+# Quando si pubblica un tag vX.Y.Z costruisce lo zip del plugin (con vendor/) e lo allega alla release di GitHub.
+# L'updater del plugin (plugin-update-checker, Updater.php) installa proprio quello zip.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Verifica che il tag coincida con la versione del plugin
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! grep -q "Version:           ${VERSION}$" wp-qrcode-generator.php; then
+            echo "La versione nell'header di wp-qrcode-generator.php non coincide con il tag ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+          if ! grep -q "'WPQR_VERSION', '${VERSION}'" wp-qrcode-generator.php; then
+            echo "WPQR_VERSION non coincide con il tag ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+
+      - name: Dipendenze PHP (solo produzione)
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Crea lo zip (cartella di primo livello wp-qrcode-generator/)
+        run: |
+          SLUG=wp-qrcode-generator
+          mkdir -p "zip/stage/${SLUG}"
+          cp -r wp-qrcode-generator.php index.php README.md includes templates assets vendor "zip/stage/${SLUG}/"
+          (cd zip/stage && zip -rq "../${SLUG}-${GITHUB_REF_NAME#v}.zip" "${SLUG}")
+
+      - name: Pubblica la release con lo zip allegato
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ZIP="zip/wp-qrcode-generator-${GITHUB_REF_NAME#v}.zip"
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" "${ZIP}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${ZIP}" --title "${GITHUB_REF_NAME}" --generate-notes
+          fi

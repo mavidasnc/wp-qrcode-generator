@@ -23,8 +23,12 @@ final class Plugin {
 		Tracker::init();
 		Frontend::init();
 
+		// Fuori da is_admin(): il controllo periodico delle release gira anche con il cron.
+		Updater::init();
+
 		if ( is_admin() ) {
 			Admin::init();
+			UpdatesPage::init();
 		}
 	}
 

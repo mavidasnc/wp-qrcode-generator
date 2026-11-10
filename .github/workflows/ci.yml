@@ -1,0 +1,35 @@
+name: CI
+
+# Controllo di sintassi PHP e validità di composer.json: a ogni push su main, a ogni pull request
+# e come passo obbligatorio prima della pubblicazione di una release (vedi release.yml).
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: PHP (sintassi e composer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          # La versione minima richiesta dal plugin.
+          php-version: '8.2'
+          tools: composer
+
+      - name: composer.json valido
+        run: composer validate --strict --no-check-publish
+
+      - name: Dipendenze PHP
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Sintassi di tutti i file PHP del plugin
+        run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l

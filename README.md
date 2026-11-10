@@ -2,7 +2,7 @@
 
 Plugin WordPress per creare codici QR che, alla scansione, fanno un **redirect**
 oppure mostrano **contenuti e allegati**, e che tracciano le visite giorno per
-giorno. Versione `0.2.1`, autore Mavida.
+giorno. Versione `0.3.0`, autore Mavida.
 
 Il plugin è una riscrittura: non è compatibile con la prima versione (`0.1`) né
 con la logica QR del tema bioclarma, e non importa nulla da essi.
@@ -118,7 +118,9 @@ wp-qrcode-generator/
 │   ├── Generator.php         SVG, PNG e endpoint /qr-image/
 │   ├── Tracker.php           tabelle, registrazione e query delle statistiche
 │   ├── Frontend.php          redirect / pagina del tema / pagina minimale, allegati
-│   └── Admin.php             meta box, salvataggio, colonne dell'elenco
+│   ├── Admin.php             meta box, salvataggio, colonne dell'elenco
+│   ├── Updater.php           controllo delle release su GitHub (plugin-update-checker)
+│   └── UpdatesPage.php       pagina Codici QR > Aggiornamenti
 ├── templates/minimal.php     pagina minimale
 ├── assets/                   admin.css, admin.js (modalità, allegati, copia URL), frontend.css
 └── vendor/                   dipendenze Composer
@@ -126,6 +128,26 @@ wp-qrcode-generator/
 
 CSS con classi BEM e prefisso `wpqr-`. Le stringhe sono in italiano con text
 domain `wp-qrcode-generator` (niente file di traduzione).
+
+## Aggiornamenti
+
+Il plugin si aggiorna dalle **release di GitHub**
+([mavidasnc/wp-qrcode-generator](https://github.com/mavidasnc/wp-qrcode-generator),
+repository pubblico) con [plugin-update-checker](https://github.com/YahnisElsts/plugin-update-checker):
+WordPress controlla ogni 12 ore e l'aggiornamento compare in *Plugin*. In
+**Codici QR → Aggiornamenti** (serve la capability `update_plugins`) si vedono
+versione installata e ultima release, si può forzare il controllo e installare
+con un clic. L'updater scarica lo zip allegato alla release, che contiene
+`vendor/`, e non il sorgente di GitHub.
+
+### Pubblicare una release
+
+1. Alzare la versione nell'header di `wp-qrcode-generator.php` (`Version:`) e in
+   `WPQR_VERSION`, committare e fare push su `main`.
+2. Creare il tag e pubblicarlo: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. Il workflow `.github/workflows/release.yml` controlla che il tag coincida con
+   la versione, esegue i controlli di CI, installa le dipendenze di produzione e
+   allega alla release lo zip `wp-qrcode-generator-X.Y.Z.zip`.
 
 ## Disattivazione e disinstallazione
 
