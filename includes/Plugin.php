@@ -28,6 +28,7 @@ final class Plugin {
 
 		if ( is_admin() ) {
 			Admin::init();
+			Settings::init();
 			UpdatesPage::init();
 		}
 	}

@@ -79,6 +79,16 @@
 		} );
 	}
 
+	// Azzeramento delle statistiche: è un link, quindi basta annullare il click per non procedere.
+	var resetLink = document.querySelector( '.wpqr-stats__reset' );
+	if ( resetLink ) {
+		resetLink.addEventListener( 'click', function ( event ) {
+			if ( ! window.confirm( wpqrAdmin.confirmReset ) ) {
+				event.preventDefault();
+			}
+		} );
+	}
+
 	// Copia dell'URL pubblico del QR.
 	var copyButton = document.getElementById( 'wpqr-copy-url' );
 	var urlField = document.getElementById( 'wpqr-code-url' );

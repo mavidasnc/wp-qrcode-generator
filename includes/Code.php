@@ -54,14 +54,17 @@ final class Code {
 
 	/**
 	 * Codice casuale e unico, usato come slug del post (quindi nell'URL /qr/{codice}).
-	 * Sei caratteri su 31 simboli sono circa 887 milioni di combinazioni.
+	 * La lunghezza viene dalle impostazioni (6 caratteri su 31 simboli sono circa
+	 * 887 milioni di combinazioni).
 	 */
 	public static function generate(): string {
 		global $wpdb;
 
+		$length = Settings::code_length();
+
 		do {
 			$code = '';
-			for ( $i = 0; $i < 6; $i++ ) {
+			for ( $i = 0; $i < $length; $i++ ) {
 				$code .= self::ALPHABET[ random_int( 0, strlen( self::ALPHABET ) - 1 ) ];
 			}
 			$exists = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching

@@ -227,13 +227,23 @@ final class Tracker {
 	 * @param int $post_id ID del post eliminato.
 	 */
 	public static function delete_stats( int $post_id ): void {
-		global $wpdb;
-
 		if ( Code::POST_TYPE !== get_post_type( $post_id ) ) {
 			return;
 		}
 
-		$wpdb->delete( self::hits_table(), array( 'qr_id' => $post_id ), array( '%d' ) );
-		$wpdb->delete( self::visitors_table(), array( 'qr_id' => $post_id ), array( '%d' ) );
+		self::reset( $post_id );
+	}
+
+	/**
+	 * Azzera le statistiche di un QR. Si svuotano entrambe le tabelle: se restassero
+	 * gli hash dei visitatori, il totale degli unici sopravvivrebbe.
+	 *
+	 * @param int $qr_id ID del post QR.
+	 */
+	public static function reset( int $qr_id ): void {
+		global $wpdb;
+
+		$wpdb->delete( self::hits_table(), array( 'qr_id' => $qr_id ), array( '%d' ) );
+		$wpdb->delete( self::visitors_table(), array( 'qr_id' => $qr_id ), array( '%d' ) );
 	}
 }

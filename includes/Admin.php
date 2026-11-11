@@ -1,7 +1,8 @@
 <?php
 /**
  * Interfaccia in wp-admin: meta box (comportamento, codice QR, statistiche),
- * salvataggio e colonne dell'elenco.
+ * salvataggio, azzeramento delle statistiche e colonne dell'elenco
+ * (incluso il grafico degli ultimi 30 giorni).
  *
  * @package Mavida\QRCodeGenerator
  */
@@ -24,6 +25,9 @@ final class Admin {
 		add_action( 'admin_enqueue_scripts', array( self::class, 'enqueue' ) );
 		add_filter( 'manage_' . Code::POST_TYPE . '_posts_columns', array( self::class, 'columns' ) );
 		add_action( 'manage_' . Code::POST_TYPE . '_posts_custom_column', array( self::class, 'column_content' ), 10, 2 );
+		add_action( 'admin_post_wpqr_reset_stats', array( self::class, 'handle_reset_stats' ) );
+		add_action( 'admin_notices', array( self::class, 'reset_notice' ) );
+		add_filter( 'removable_query_args', array( self::class, 'removable_query_args' ) );
 	}
 
 	/**
@@ -53,6 +57,7 @@ final class Admin {
 				'chooseButton' => __( 'Usa questi file', 'wp-qrcode-generator' ),
 				'remove'       => __( 'Rimuovi', 'wp-qrcode-generator' ),
 				'copied'       => __( 'Copiato', 'wp-qrcode-generator' ),
+				'confirmReset' => __( 'Azzerare tutte le statistiche di questo QR? L\'operazione non si può annullare.', 'wp-qrcode-generator' ),
 			)
 		);
 	}
@@ -127,7 +132,11 @@ final class Admin {
 		$code = (string) $post->post_name;
 
 		if ( '' === $code ) {
-			echo '<p>' . esc_html__( 'Salva la bozza per generare il codice QR.', 'wp-qrcode-generator' ) . '</p>';
+			// Con la generazione automatica il codice nasce al primo salvataggio; altrimenti è lo slug standard, assegnato da WordPress alla pubblicazione.
+			$message = Settings::auto_code()
+				? __( 'Salva la bozza per generare il codice QR.', 'wp-qrcode-generator' )
+				: __( 'Pubblica il QR per generare il codice.', 'wp-qrcode-generator' );
+			echo '<p>' . esc_html( $message ) . '</p>';
 			return;
 		}
 
@@ -159,15 +168,7 @@ final class Admin {
 
 		$totals = Tracker::totals( $post->ID );
 		$rows   = Tracker::daily( $post->ID, 365 );
-		$byday  = array_column( $rows, 'hits', 'hit_date' );
-
-		// Ultimi 30 giorni (oggi incluso), anche quelli senza visite, per il grafico.
-		$today  = new \DateTimeImmutable( 'today', wp_timezone() );
-		$series = array();
-		for ( $i = 29; $i >= 0; $i-- ) {
-			$day            = $today->modify( "-{$i} days" )->format( 'Y-m-d' );
-			$series[ $day ] = (int) ( $byday[ $day ] ?? 0 );
-		}
+		$series = self::last_30_days( $rows );
 
 		$tiles = array(
 			__( 'Visite totali', 'wp-qrcode-generator' )   => $totals['hits'],
@@ -214,11 +215,36 @@ final class Admin {
 				<p><?php esc_html_e( 'Nessuna scansione registrata.', 'wp-qrcode-generator' ); ?></p>
 			<?php endif; ?>
 
+			<?php if ( $totals['hits'] > 0 && current_user_can( 'edit_post', $post->ID ) ) : ?>
+				<p>
+					<?php // Link e non form: il meta box sta già dentro il form dell'editor, i form non si annidano. ?>
+					<a class="button button-link-delete wpqr-stats__reset" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=wpqr_reset_stats&post=' . $post->ID ), 'wpqr_reset_stats_' . $post->ID ) ); ?>"><?php esc_html_e( 'Azzera statistiche', 'wp-qrcode-generator' ); ?></a>
+				</p>
+			<?php endif; ?>
+
 			<p class="description">
 				<?php esc_html_e( 'Il giorno segue il fuso orario del sito. Gli unici si contano per IP (conservato solo come hash): nel totale sono IP distinti, nelle righe giornaliere quelli del giorno, quindi la loro somma può superare il totale. Non vengono contati bot, anteprime dei link e visite di chi può modificare il QR; la tabella mostra gli ultimi 365 giorni.', 'wp-qrcode-generator' ); ?>
 			</p>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Visite degli ultimi 30 giorni (oggi incluso), anche quelli senza visite, in ordine cronologico.
+	 *
+	 * @param array<int, array{hit_date: string, hits: int, uniques: int}> $rows Righe di Tracker::daily().
+	 * @return array<string, int> Visite per giorno, con chiave Y-m-d.
+	 */
+	private static function last_30_days( array $rows ): array {
+		$byday  = array_column( $rows, 'hits', 'hit_date' );
+		$today  = new \DateTimeImmutable( 'today', wp_timezone() );
+		$series = array();
+		for ( $i = 29; $i >= 0; $i-- ) {
+			$day            = $today->modify( "-{$i} days" )->format( 'Y-m-d' );
+			$series[ $day ] = (int) ( $byday[ $day ] ?? 0 );
+		}
+
+		return $series;
 	}
 
 	/**
@@ -301,6 +327,7 @@ final class Admin {
 				$result['wpqr_mode']    = __( 'Modalità', 'wp-qrcode-generator' );
 				$result['wpqr_hits']    = __( 'Visite', 'wp-qrcode-generator' );
 				$result['wpqr_uniques'] = __( 'Unici', 'wp-qrcode-generator' );
+				$result['wpqr_trend']   = __( 'Ultimi 30 giorni', 'wp-qrcode-generator' );
 			}
 		}
 		return $result;
@@ -336,6 +363,51 @@ final class Admin {
 				$totals[ $post_id ] ??= Tracker::totals( $post_id );
 				echo esc_html( number_format_i18n( $totals[ $post_id ][ 'wpqr_hits' === $column ? 'hits' : 'uniques' ] ) );
 				break;
+			case 'wpqr_trend':
+				if ( '' !== $code ) {
+					echo self::chart( self::last_30_days( Tracker::daily( $post_id, 30 ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG costruito con valori numerici e testi già escapati.
+				}
+				break;
 		}
+	}
+
+	/**
+	 * Azzera le statistiche di un QR (link del meta box, via admin-post).
+	 */
+	public static function handle_reset_stats(): void {
+		$post_id = isset( $_GET['post'] ) ? absint( $_GET['post'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- il nonce dipende dall'ID e si verifica subito sotto.
+
+		if ( Code::POST_TYPE !== get_post_type( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_die( esc_html__( 'Non hai il permesso di azzerare le statistiche di questo QR.', 'wp-qrcode-generator' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( 'wpqr_reset_stats_' . $post_id );
+
+		Tracker::reset( $post_id );
+
+		wp_safe_redirect( add_query_arg( 'wpqr_reset', 1, get_edit_post_link( $post_id, 'url' ) ) );
+		exit;
+	}
+
+	/**
+	 * Conferma dopo l'azzeramento, nella schermata di modifica del QR.
+	 */
+	public static function reset_notice(): void {
+		$screen = get_current_screen();
+		if ( ! $screen || Code::POST_TYPE !== $screen->post_type || 'post' !== $screen->base || ! isset( $_GET['wpqr_reset'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- solo un messaggio, nessuna azione.
+			return;
+		}
+
+		echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Statistiche azzerate.', 'wp-qrcode-generator' ) . '</p></div>';
+	}
+
+	/**
+	 * Fa togliere dall'URL il parametro della conferma (WordPress lo rimuove con history.replaceState).
+	 *
+	 * @param string[] $args Parametri da rimuovere.
+	 * @return string[]
+	 */
+	public static function removable_query_args( array $args ): array {
+		$args[] = 'wpqr_reset';
+		return $args;
 	}
 }

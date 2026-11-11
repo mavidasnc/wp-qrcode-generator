@@ -132,3 +132,14 @@
 .column-wpqr_qr {
 	width: 72px;
 }
+
+.column-wpqr_trend {
+	width: 130px;
+}
+
+/* Il grafico della colonna è più piccolo di quello del meta box. */
+.column-wpqr_trend .wpqr-chart {
+	width: 120px;
+	height: 32px;
+	margin: 0;
+}

@@ -2,7 +2,7 @@
 
 Plugin WordPress per creare codici QR che, alla scansione, fanno un **redirect**
 oppure mostrano **contenuti e allegati**, e che tracciano le visite giorno per
-giorno. Versione `0.3.0`, autore Mavida.
+giorno. Versione `0.4.0`, autore Mavida.
 
 Il plugin è una riscrittura: non è compatibile con la prima versione (`0.1`) né
 con la logica QR del tema bioclarma, e non importa nulla da essi.
@@ -20,10 +20,16 @@ con la logica QR del tema bioclarma, e non importa nulla da essi.
 ## Come si usa
 
 1. **Codici QR → Aggiungi.** Il titolo è solo il nome interno.
-2. Al primo salvataggio il plugin assegna come slug un **codice casuale di 6
-   caratteri** (es. `k7m2xp`): è la parte finale dell'URL pubblico
-   `/qr/k7m2xp/`. Lo slug si può modificare a mano, ma cambia il contenuto del
-   QR e quello già stampato smette di funzionare.
+2. Al primo salvataggio il plugin assegna come slug un **codice casuale** (di
+   6 caratteri per impostazione predefinita, es. `k7m2xp`): è la parte finale
+   dell'URL pubblico `/qr/k7m2xp/`. Se il titolo è vuoto, ci copia il codice.
+   Lo slug si può modificare a mano, ma cambia il contenuto del QR e quello già
+   stampato smette di funzionare. In **Codici QR → Impostazioni** si può
+   cambiare la lunghezza del codice (da 4 a 12, vale solo per i nuovi QR) e
+   disattivare la generazione automatica: in quel caso si usa lo slug standard
+   di WordPress (dal titolo o l'ID) e il titolo non viene toccato. Con un
+   titolo in caratteri non latini lo slug diventa percent-encoded e l'endpoint
+   `/qr-image/` non lo riconosce: in quel caso conviene impostarlo a mano.
 3. Nel box **Cosa succede alla scansione** scegli la modalità (sotto).
 4. Nel box **Codice QR** vedi l'anteprima, copi l'URL e scarichi **SVG** o
    **PNG** (1024 px).
@@ -90,12 +96,15 @@ o del rendering.
   ultimi 7 e 30 giorni, grafico a barre degli ultimi 30 giorni e tabella
   giorno per giorno (ultimi 365 giorni, solo i giorni con visite). Nel totale
   gli unici sono IP distinti; nelle righe giornaliere sono quelli del giorno,
-  quindi la somma delle righe può superare il totale.
+  quindi la somma delle righe può superare il totale. Il pulsante **Azzera
+  statistiche** (con conferma, per chi può modificare il QR) cancella le
+  statistiche di quel QR da entrambe le tabelle.
 - **Non vengono contati:** richieste `HEAD`, user agent vuoti, bot, crawler e
   anteprime dei link (WhatsApp, Telegram, Facebook, ...) e le visite di chi può
   modificare il QR, per non sporcare i numeri con le prove in admin. Per
   cambiare le regole c'è il filtro `wpqr_should_track`.
-- L'elenco dei QR ha le colonne Visite e Unici. Eliminando un QR (non dal
+- L'elenco dei QR ha le colonne Visite, Unici e Ultimi 30 giorni (grafico a
+  barre, una per giorno). Eliminando un QR (non dal
   cestino) si eliminano anche le sue statistiche.
 
 ### Filtri
@@ -118,9 +127,10 @@ wp-qrcode-generator/
 │   ├── Generator.php         SVG, PNG e endpoint /qr-image/
 │   ├── Tracker.php           tabelle, registrazione e query delle statistiche
 │   ├── Frontend.php          redirect / pagina del tema / pagina minimale, allegati
-│   ├── Admin.php             meta box, salvataggio, colonne dell'elenco
+│   ├── Admin.php             meta box, salvataggio, colonne dell'elenco, azzeramento statistiche
+│   ├── Settings.php          pagina Codici QR > Impostazioni (opzione wpqr_settings)
 │   ├── Updater.php           controllo delle release su GitHub (plugin-update-checker)
-│   └── UpdatesPage.php       pagina Codici QR > Aggiornamenti
+│   └── UpdatesPage.php       sezione Aggiornamenti della pagina Impostazioni
 ├── templates/minimal.php     pagina minimale
 ├── assets/                   admin.css, admin.js (modalità, allegati, copia URL), frontend.css
 └── vendor/                   dipendenze Composer
@@ -135,7 +145,8 @@ Il plugin si aggiorna dalle **release di GitHub**
 ([mavidasnc/wp-qrcode-generator](https://github.com/mavidasnc/wp-qrcode-generator),
 repository pubblico) con [plugin-update-checker](https://github.com/YahnisElsts/plugin-update-checker):
 WordPress controlla ogni 12 ore e l'aggiornamento compare in *Plugin*. In
-**Codici QR → Aggiornamenti** (serve la capability `update_plugins`) si vedono
+**Codici QR → Impostazioni** (la pagina richiede `manage_options`; la sezione
+Aggiornamenti è visibile solo con la capability `update_plugins`) si vedono
 versione installata e ultima release, si può forzare il controllo e installare
 con un clic. L'updater scarica lo zip allegato alla release, che contiene
 `vendor/`, e non il sorgente di GitHub.
@@ -154,12 +165,13 @@ con un clic. L'updater scarica lo zip allegato alla release, che contiene
 La disattivazione ripulisce le rewrite rule. Le tabelle e i QR **non** vengono
 eliminati da nessuna delle due operazioni (non c'è un `uninstall.php`): per
 rimuovere i dati bisogna eliminare a mano i post `qr_code`, le due tabelle
-`wpqr_*` e l'opzione `wpqr_db_version`.
+`wpqr_*` e le opzioni `wpqr_db_version` e `wpqr_settings`.
 
 ## Da fare
 
-- Pagina di opzioni (titolo e testi della pagina minimale, titolo "Allegati",
-  colori, modalità predefinita, regole di conteggio).
+- Altre opzioni nella pagina Impostazioni (titolo e testi della pagina
+  minimale, titolo "Allegati", colori, modalità predefinita, regole di
+  conteggio).
 - Conservazione dei dati: la tabella `wpqr_visitors` cresce di una riga per QR,
   giorno e visitatore; serve una pulizia periodica (WP-Cron) oltre una soglia.
 - Test automatici (PHPUnit) e verifica con PHPCS/WPCS e PHPStan, come negli

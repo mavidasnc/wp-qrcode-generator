@@ -1,7 +1,7 @@
 <?php
 /**
- * Pagina "Codici QR > Aggiornamenti": versione installata, ultima release su GitHub,
- * verifica immediata e installazione con un clic.
+ * Sezione "Aggiornamenti" della pagina "Codici QR > Impostazioni": versione installata,
+ * ultima release su GitHub, verifica immediata e installazione con un clic.
  *
  * @package Mavida\QRCodeGenerator
  */
@@ -11,40 +11,23 @@ namespace Mavida\QRCodeGenerator;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pagina di amministrazione degli aggiornamenti (release di GitHub).
+ * Aggiornamenti dalle release di GitHub (la pagina è quella delle impostazioni).
  */
 final class UpdatesPage {
 
-	private const SLUG = 'wpqr-updates';
-
 	/**
-	 * Registra menu e azioni (admin-post, con nonce e capability update_plugins).
+	 * Registra le azioni (admin-post, con nonce e capability update_plugins).
 	 */
 	public static function init(): void {
-		add_action( 'admin_menu', array( self::class, 'register_menu' ) );
 		add_action( 'admin_post_wpqr_update_check', array( self::class, 'handle_check' ) );
 		add_action( 'admin_post_wpqr_update_install', array( self::class, 'handle_install' ) );
-	}
-
-	/**
-	 * Voce di menu sotto "Codici QR". Installare plugin richiede update_plugins, non basta manage_options.
-	 */
-	public static function register_menu(): void {
-		add_submenu_page(
-			'edit.php?post_type=' . Code::POST_TYPE,
-			__( 'Aggiornamenti', 'wp-qrcode-generator' ),
-			__( 'Aggiornamenti', 'wp-qrcode-generator' ),
-			'update_plugins',
-			self::SLUG,
-			array( self::class, 'render' )
-		);
 	}
 
 	/**
 	 * URL della pagina.
 	 */
 	private static function page_url(): string {
-		return admin_url( 'edit.php?post_type=' . Code::POST_TYPE . '&page=' . self::SLUG );
+		return admin_url( 'edit.php?post_type=' . Code::POST_TYPE . '&page=' . Settings::SLUG );
 	}
 
 	/**
@@ -146,76 +129,70 @@ final class UpdatesPage {
 	}
 
 	/**
-	 * Disegna la pagina.
+	 * Disegna la sezione (dentro la pagina delle impostazioni, che controlla già update_plugins).
 	 */
-	public static function render(): void {
-		if ( ! current_user_can( 'update_plugins' ) ) {
-			wp_die( esc_html__( 'Non hai il permesso di aggiornare i plugin.', 'wp-qrcode-generator' ), '', array( 'response' => 403 ) );
-		}
-
+	public static function render_section(): void {
 		$notice_key = 'wpqr_update_notice_' . get_current_user_id();
 		$notice     = get_transient( $notice_key );
 		delete_transient( $notice_key );
 
 		$status = Updater::status();
 		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'Aggiornamenti', 'wp-qrcode-generator' ); ?></h1>
-			<p><?php esc_html_e( 'Il plugin si aggiorna dalle release pubblicate su GitHub. WordPress controlla da solo ogni 12 ore: qui puoi farlo subito.', 'wp-qrcode-generator' ); ?></p>
+		<h2><?php esc_html_e( 'Aggiornamenti', 'wp-qrcode-generator' ); ?></h2>
+		<p><?php esc_html_e( 'Il plugin si aggiorna dalle release pubblicate su GitHub. WordPress controlla da solo ogni 12 ore: qui puoi farlo subito.', 'wp-qrcode-generator' ); ?></p>
 
-			<?php if ( is_array( $notice ) ) : ?>
-				<div class="notice notice-<?php echo esc_attr( $notice[0] ); ?> is-dismissible"><p><?php echo esc_html( $notice[1] ); ?></p></div>
-			<?php endif; ?>
+		<?php if ( is_array( $notice ) ) : ?>
+			<div class="notice notice-<?php echo esc_attr( $notice[0] ); ?> is-dismissible"><p><?php echo esc_html( $notice[1] ); ?></p></div>
+		<?php endif; ?>
 
-			<?php if ( null === $status ) : ?>
-				<div class="notice notice-error inline"><p><?php esc_html_e( 'Il sistema di aggiornamento non è disponibile: manca la cartella vendor/ del plugin.', 'wp-qrcode-generator' ); ?></p></div>
-			<?php else : ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Versione installata', 'wp-qrcode-generator' ); ?></th>
-						<td><?php echo esc_html( $status['current'] ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Ultima versione', 'wp-qrcode-generator' ); ?></th>
-						<td>
-							<?php echo esc_html( $status['latest'] ); ?>
-							<?php if ( $status['update_available'] ) : ?>
-								<strong><?php esc_html_e( '(nuova)', 'wp-qrcode-generator' ); ?></strong>
-							<?php endif; ?>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Ultimo controllo', 'wp-qrcode-generator' ); ?></th>
-						<td>
-							<?php
-							echo $status['checked_at']
-								? esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $status['checked_at'] ) )
-								: esc_html__( 'mai', 'wp-qrcode-generator' );
-							?>
-						</td>
-					</tr>
-				</table>
+		<?php if ( null === $status ) : ?>
+			<div class="notice notice-error inline"><p><?php esc_html_e( 'Il sistema di aggiornamento non è disponibile: manca la cartella vendor/ del plugin.', 'wp-qrcode-generator' ); ?></p></div>
+		<?php else : ?>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Versione installata', 'wp-qrcode-generator' ); ?></th>
+					<td><?php echo esc_html( $status['current'] ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Ultima versione', 'wp-qrcode-generator' ); ?></th>
+					<td>
+						<?php echo esc_html( $status['latest'] ); ?>
+						<?php if ( $status['update_available'] ) : ?>
+							<strong><?php esc_html_e( '(nuova)', 'wp-qrcode-generator' ); ?></strong>
+						<?php endif; ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Ultimo controllo', 'wp-qrcode-generator' ); ?></th>
+					<td>
+						<?php
+						echo $status['checked_at']
+							? esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $status['checked_at'] ) )
+							: esc_html__( 'mai', 'wp-qrcode-generator' );
+						?>
+					</td>
+				</tr>
+			</table>
 
-				<div style="display:flex;gap:8px;align-items:center;">
+			<div style="display:flex;gap:8px;align-items:center;">
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="wpqr_update_check">
+					<?php wp_nonce_field( 'wpqr_update_check' ); ?>
+					<?php submit_button( __( 'Verifica aggiornamenti', 'wp-qrcode-generator' ), 'secondary', 'submit', false ); ?>
+				</form>
+
+				<?php if ( $status['update_available'] ) : ?>
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-						<input type="hidden" name="action" value="wpqr_update_check">
-						<?php wp_nonce_field( 'wpqr_update_check' ); ?>
-						<?php submit_button( __( 'Verifica aggiornamenti', 'wp-qrcode-generator' ), 'secondary', 'submit', false ); ?>
+						<input type="hidden" name="action" value="wpqr_update_install">
+						<?php wp_nonce_field( 'wpqr_update_install' ); ?>
+						<?php /* translators: %s: numero di versione */ ?>
+						<?php submit_button( sprintf( __( 'Installa la versione %s', 'wp-qrcode-generator' ), $status['latest'] ), 'primary', 'submit', false ); ?>
 					</form>
+				<?php endif; ?>
+			</div>
 
-					<?php if ( $status['update_available'] ) : ?>
-						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-							<input type="hidden" name="action" value="wpqr_update_install">
-							<?php wp_nonce_field( 'wpqr_update_install' ); ?>
-							<?php /* translators: %s: numero di versione */ ?>
-							<?php submit_button( sprintf( __( 'Installa la versione %s', 'wp-qrcode-generator' ), $status['latest'] ), 'primary', 'submit', false ); ?>
-						</form>
-					<?php endif; ?>
-				</div>
-
-				<p><a href="<?php echo esc_url( Updater::RELEASES_URL ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Note di versione su GitHub', 'wp-qrcode-generator' ); ?></a></p>
-			<?php endif; ?>
-		</div>
+			<p><a href="<?php echo esc_url( Updater::RELEASES_URL ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Note di versione su GitHub', 'wp-qrcode-generator' ); ?></a></p>
+		<?php endif; ?>
 		<?php
 	}
 }

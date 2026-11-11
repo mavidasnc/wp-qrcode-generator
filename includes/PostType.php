@@ -77,14 +77,16 @@ final class PostType {
 	/**
 	 * Al primo salvataggio assegna come slug un codice breve e casuale invece
 	 * dello slug del titolo, così l'URL (e il QR) restano corti e non rivelano
-	 * il nome interno. Se lo slug viene modificato a mano non viene toccato.
+	 * il nome interno; se il titolo è vuoto ci copia il codice. Se lo slug viene
+	 * modificato a mano non viene toccato. Non fa nulla se la generazione
+	 * automatica è disattivata nelle impostazioni.
 	 *
 	 * @param array<string, mixed> $data    Dati del post in scrittura.
 	 * @param array<string, mixed> $postarr Dati grezzi passati a wp_insert_post().
 	 * @return array<string, mixed>         Dati del post, con lo slug assegnato se serve.
 	 */
 	public static function assign_code( array $data, array $postarr ): array {
-		if ( Code::POST_TYPE !== $data['post_type'] || in_array( $data['post_status'], array( 'auto-draft', 'trash' ), true ) ) {
+		if ( Code::POST_TYPE !== $data['post_type'] || in_array( $data['post_status'], array( 'auto-draft', 'trash' ), true ) || ! Settings::auto_code() ) {
 			return $data;
 		}
 
@@ -93,6 +95,11 @@ final class PostType {
 
 		if ( '' === $stored && '' === (string) ( $postarr['post_name'] ?? '' ) ) {
 			$data['post_name'] = Code::generate();
+		}
+
+		// Si lavora sui dati in scrittura: save_post + wp_update_post farebbe ricorsione.
+		if ( '' === trim( (string) $data['post_title'] ) && '' !== (string) $data['post_name'] ) {
+			$data['post_title'] = $data['post_name'];
 		}
 
 		return $data;
